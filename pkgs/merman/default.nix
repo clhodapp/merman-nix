@@ -6,16 +6,16 @@
 }:
 rustPlatform.buildRustPackage rec {
   pname = "merman";
-  version = "0.8.0-alpha.5";
+  version = "0.8.0-alpha.6";
 
   src = fetchFromGitHub {
     owner = "Latias94";
     repo = "merman";
     rev = "v${version}";
-    hash = "sha256-DeFW51g5d98hcp1qa0sNXvRoOhugUcWs7b6HEHEpa9E=";
+    hash = "sha256-zOOy6DnGcMjXMtdtBSWI3B6O8IQTm7LPaky48ydS1KE=";
   };
 
-  cargoHash = "sha256-FKTeFbo9YtHOSPeb1h/bh2UN3AwMZh9mPqADbsQC32c=";
+  cargoHash = "sha256-9Wx+nTuTaR79htmkAAiRFOaX14b9fQiZ+hhxi2mF3EE=";
 
   # merman-lsp: mermaid language server; merman-cli: headless
   # mmdc-compatible renderer (SVG/PNG without a browser).

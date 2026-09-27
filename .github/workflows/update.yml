@@ -1,0 +1,118 @@
+# SPDX-License-Identifier: MIT
+#
+# Follows upstream's releases without anyone bumping by hand. Every run
+# asks GitHub for merman's newest tag and, when it is newer than the
+# packaged version, moves the package to it (version, source hash and
+# cargo vendor hash, all rewritten by nix-update), proves the result
+# with the flake checks, and pushes the bump to main. The smoke check
+# is the proof that matters: upstream is pre-1.0 and has changed what
+# ships between tags in ways a successful build does not reveal.
+#
+# Prereleases count. The package has sat on the 0.8.0 prereleases since
+# the language server needed them, and nix-update's default would skip
+# every tag with "alpha" or "rc" in its name; `--version=unstable` below
+# admits them, and removing it makes the run follow stable tags only.
+#
+# A push made with the workflow's own token starts no other workflow,
+# so the two that a push to main would have started are dispatched at
+# the end instead: check.yml, which builds main again, roots it in the
+# build cache and pushes the closure to the clhodapp cache, and
+# notify-workspace.yml, which asks the workspace to converge its
+# consumers onto the new version. The bump is built twice as a result,
+# once here as the gate and once there as the publication; the second
+# build keeps "what main builds is what the caches hold" a property of
+# check.yml alone.
+#
+# A run that finds main moved under it (its push is refused as a
+# non-fast-forward) fails and leaves the bump to the next run.
+
+name: update
+
+on:
+  schedule:
+    # Daily, off the hour. A run with nothing to do installs Nix, reads
+    # the release feed and stops, in about a minute.
+    - cron: "37 6 * * *"
+  workflow_dispatch:
+
+# Pushing the bump; dispatching check.yml and notify-workspace.yml.
+permissions:
+  contents: write
+  actions: write
+
+# Two runs at once could both find the same release and race to push.
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Actions pinned by commit, as in check.yml.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            sandbox = true
+
+      # nix-update comes from this flake's own nixpkgs pin, so the run
+      # fetches nothing the lock does not name. It reads the package's
+      # fetchFromGitHub source to find the release feed, and rewrites
+      # the version and both hashes in place.
+      - name: Move the package to upstream's newest release
+        id: bump
+        run: |
+          set -euo pipefail
+          before=$(nix eval --raw '.#merman.version')
+          nix run --inputs-from . 'nixpkgs#nix-update' -- --flake --version=unstable merman
+          after=$(nix eval --raw '.#merman.version')
+          if [[ "$before" == "$after" ]]; then
+            echo "merman $before is upstream's newest release."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "merman $before becomes $after."
+          git diff
+          {
+            echo "changed=true"
+            echo "before=$before"
+            echo "after=$after"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run the flake checks against the bump
+        if: steps.bump.outputs.changed == 'true'
+        run: nix flake check --print-build-logs
+
+      - name: Push the bump to main
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ steps.bump.outputs.before }}
+          AFTER: ${{ steps.bump.outputs.after }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pkgs/merman/default.nix
+          git commit -m "maint(merman): $BEFORE -> $AFTER"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:main
+          echo "::notice::Pushed merman $AFTER to main."
+
+      # Both take main's head as their subject: check.yml with no inputs
+      # builds main's own commit, and notify-workspace.yml passes the
+      # head of the ref it was dispatched on.
+      - name: Start the runs the push would have started
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run check.yml --repo "$GITHUB_REPOSITORY" --ref main
+          gh workflow run notify-workspace.yml --repo "$GITHUB_REPOSITORY" --ref main
