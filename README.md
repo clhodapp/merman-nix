@@ -45,6 +45,23 @@ Building the package alone would have caught neither.
 
 `nix fmt` formats.
 
+## Following upstream
+
+A scheduled run (`.github/workflows/update.yml`, daily, or on demand
+from the Actions tab) asks GitHub for merman's newest tag and, when it
+is newer than the packaged version, moves the package to it, runs the
+flake checks, and pushes the bump to `main` once they pass. Prereleases
+count: the package has followed the 0.8.0 prereleases since the language
+server needed them. A run whose checks fail pushes nothing and shows as
+failed, and the package stays where it was until whatever broke is
+fixed.
+
+The same move by hand, from this directory:
+
+```sh
+nix run --inputs-from . 'nixpkgs#nix-update' -- --flake --version=unstable merman
+```
+
 ## Binary cache
 
 What `main` builds is pushed to the `clhodapp` cachix cache, signed with
