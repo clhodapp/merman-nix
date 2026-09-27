@@ -1,18 +1,31 @@
 # merman-nix
 
 Nix packaging of [merman](https://github.com/Latias94/merman), a
-headless Rust implementation of mermaid. It ships two binaries:
-`merman-cli`, a renderer that takes mermaid source and writes SVG or
-PNG without a browser, and `merman-lsp`, a mermaid language server.
+headless Rust implementation of mermaid. It ships `merman-cli`, a
+renderer that takes mermaid source and writes SVG or PNG without a
+browser, and, from 0.8.0 on, `merman-lsp`, a mermaid language server.
 
 merman is not in nixpkgs, so this flake packages it and exports the
-result as an overlay.
+result as an overlay. Three packages follow three upstream lines, and
+each moves on its own as upstream does:
+
+| Package | Follows |
+|---|---|
+| `merman-stable` | the newest stable release |
+| `merman-preview` | the newest tag, prerelease or not |
+| `merman-unstable` | the head of the `main` branch, as a dated snapshot |
+
+`merman` names `merman-preview` for now, until the flakes that read it
+read `merman-preview` instead; it then goes away.
 
 ## Use it
 
 ```sh
-nix run github:clhodapp/merman-nix -- mmdc -i diagram.mmd -o diagram.svg
+nix run github:clhodapp/merman-nix -- render -i diagram.mmd -o diagram.svg
 ```
+
+The default package is `merman-stable`; name another as
+`github:clhodapp/merman-nix#merman-preview`.
 
 As a flake input:
 
@@ -20,46 +33,52 @@ As a flake input:
 {
   inputs.merman-nix.url = "github:clhodapp/merman-nix";
 
-  # the package:
-  #   inputs.merman-nix.packages.${system}.merman
-  # or through the overlay, landing at pkgs.merman.merman:
+  # a package:
+  #   inputs.merman-nix.packages.${system}.merman-preview
+  # or through the overlay, landing at pkgs.merman-nix.<package>:
   #   nixpkgs.overlays = [ inputs.merman-nix.overlays.packages ];
 }
 ```
 
 `merman-cli` implements the `mmdc` interface that mermaid-cli defines,
 so it substitutes for `mmdc` in tooling that shells out to it, without
-pulling in a headless browser.
+pulling in a headless browser. From 0.8.0 on that interface is the
+`mmdc` subcommand; 0.7.0 has it as `render`.
 
 ## Development
 
-`nix flake check` builds the package and runs a smoke check that
-exercises the built binaries over the interfaces callers use: the `mmdc`
-rendering path, the flag set that keeps labels as native `<text>`,
-source detection, and an LSP `initialize` handshake over stdio.
+`nix flake check` builds the three packages and runs each one's smoke
+check, which exercises the built binaries over the interfaces callers
+use: the `mmdc` rendering path, the flag set that keeps labels as
+native `<text>`, source detection, and, where the language server
+ships, an LSP `initialize` handshake over stdio.
 
 That check earns its place. Upstream is pre-1.0, and the 0.8.0-alpha.5
 bump both silently dropped a binary (cargo `required-features` gating on
 the `[[bin]]` target) and moved the CLI surface behind a subcommand.
 Building the package alone would have caught neither.
 
+The build is shared (`pkgs/build-merman.nix`); a package file holds
+only its source. What upstream ships at a version, and so what the
+smoke check expects, follows from the version.
+
 `nix fmt` formats.
 
 ## Following upstream
 
 A scheduled run (`.github/workflows/update.yml`, daily, or on demand
-from the Actions tab) asks GitHub for merman's newest tag and, when it
-is newer than the packaged version, moves the package to it, runs the
-flake checks, and pushes the bump to `main` once they pass. Prereleases
-count: the package has followed the 0.8.0 prereleases since the language
-server needed them. A run whose checks fail pushes nothing and shows as
-failed, and the package stays where it was until whatever broke is
-fixed.
+from the Actions tab) asks GitHub where each line stands and moves the
+packages behind it: version, hashes, and the commit for the snapshot.
+Each move is gated by that package's smoke check. The moves that pass
+are pushed to `main`; a package whose move fails stays where it was,
+and the run shows as failed, naming it, until whatever broke is fixed.
 
-The same move by hand, from this directory:
+The same moves by hand, from this directory:
 
 ```sh
-nix run --inputs-from . 'nixpkgs#nix-update' -- --flake --version=unstable merman
+nix run --inputs-from . 'nixpkgs#nix-update' -- --flake --version=stable merman-stable
+nix run --inputs-from . 'nixpkgs#nix-update' -- --flake --version=unstable merman-preview
+nix run --inputs-from . 'nixpkgs#nix-update' -- --flake --version=branch=main merman-unstable
 ```
 
 ## Binary cache
