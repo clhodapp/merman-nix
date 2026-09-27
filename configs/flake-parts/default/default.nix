@@ -31,11 +31,12 @@
   };
 
   # `nix run github:clhodapp/merman-nix` should reach the renderer, which is
-  # the binary anyone arrives here for.
+  # the binary anyone arrives here for; the stable release is the one to
+  # hand someone who named none.
   perSystem =
     { config, ... }:
     {
-      packages.default = config.packages.merman;
+      packages.default = config.packages.merman-stable;
     };
 
   partitionedAttrs.checks = "checks";
@@ -60,50 +61,18 @@
         perSystem =
           { pkgs, system, ... }:
           let
-            merman = self.packages.${system}.merman;
+            packages = self.packages.${system};
           in
           {
-            checks = {
-              # Exercise the built binaries over the interfaces consumers
-              # actually use. Upstream is pre-1.0 and has twice changed
-              # what ships: a bump silently dropped a binary (cargo
-              # required-features gating) and moved the CLI surface
-              # behind a subcommand. Building alone would not have caught
-              # either.
-              smoke = pkgs.runCommand "merman-smoke" { } ''
-                # The mmdc interface: source on stdin, SVG to a file.
-                printf 'graph TD\n  A-->B\n' \
-                  | ${merman}/bin/merman-cli mmdc -i - -o diagram.svg
-                grep -q '<svg' diagram.svg
-
-                # The full flag set callers pass, with htmlLabels off so
-                # labels stay native <text> (librsvg drops foreignObject).
-                printf '{"htmlLabels": false, "flowchart": {"htmlLabels": false}}' \
-                  > config.json
-                printf 'graph TD\n  A-->|label| B\n' \
-                  | ${merman}/bin/merman-cli mmdc -i - -o flags.svg -q \
-                      -c config.json -t dark -b transparent
-                grep -q '<text' flags.svg
-                if grep -q foreignObject flags.svg; then exit 1; fi
-
-                # The detector: recognizes mermaid source, refuses prose.
-                printf 'sequenceDiagram\n  A->>B: hi\n' \
-                  | ${merman}/bin/merman-cli detect
-                if printf 'plain prose\n' \
-                  | ${merman}/bin/merman-cli detect 2>/dev/null; then
-                  exit 1
-                fi
-
-                # The LSP transport: an initialize request over stdio
-                # must come back with a capability set.
-                body='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}'
-                printf 'Content-Length: %d\r\n\r\n%s' "''${#body}" "$body" \
-                  | ${merman}/bin/merman-lsp > response 2> /dev/null
-                grep -q '"capabilities"' response
-
-                touch $out
-              '';
-            };
+            # Each package carries its smoke test (pkgs/build-merman.nix),
+            # which exercises the built binaries over the interfaces
+            # consumers actually use; `smoke-<package>` is how update.yml
+            # names the one it runs against a bump.
+            checks =
+              pkgs.lib.mapAttrs' (name: package: pkgs.lib.nameValuePair "smoke-${name}" package.tests.smoke)
+                {
+                  inherit (packages) merman-stable merman-preview merman-unstable;
+                };
             treefmt.programs.nixfmt.enable = true;
           };
       };
