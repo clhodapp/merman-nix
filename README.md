@@ -36,7 +36,7 @@ As a flake input:
   # a package:
   #   inputs.merman-nix.packages.${system}.merman-preview
   # or through the overlay, landing at pkgs.merman-nix.<package>:
-  #   nixpkgs.overlays = [ inputs.merman-nix.overlays.packages ];
+  #   nixpkgs.overlays = [ inputs.merman-nix.overlays.default ];
 }
 ```
 
