@@ -4,12 +4,12 @@
 # snapshot date and the commit. update.yml moves all three.
 { buildMerman, fetchFromGitHub }:
 buildMerman {
-  version = "0.9.0-unstable-2026-10-12";
+  version = "0.9.0-unstable-2026-10-13";
   src = fetchFromGitHub {
     owner = "Latias94";
     repo = "merman";
-    rev = "bad5019bfba693e3b5b4ddf161d9490ce55071af";
-    hash = "sha256-553Osy5YJ21CgFAXiDGzO/GlYeBZugGyqr4CmYz0k4U=";
+    rev = "3a4b8c393939b69372a8f05a2b971f7cdf6ae529";
+    hash = "sha256-0q9BSNbV3dBPisBgYGczduNd5XfX70nMDqbV37WYBMo=";
   };
   cargoHash = "sha256-X9PmBX5egtCx04VFfBRvQ/g0W6bSprDhEvPrPHbFCmE=";
 }
