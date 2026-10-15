@@ -15,9 +15,6 @@ each moves on its own as upstream does:
 | `merman-preview` | the newest tag, prerelease or not |
 | `merman-unstable` | the head of the `main` branch, as a dated snapshot |
 
-`merman` names `merman-preview` for now, until the flakes that read it
-read `merman-preview` instead; it then goes away.
-
 ## Use it
 
 ```sh
