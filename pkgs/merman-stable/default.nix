@@ -3,12 +3,12 @@
 # Upstream's newest stable release. update.yml moves it.
 { buildMerman, fetchFromGitHub }:
 buildMerman rec {
-  version = "0.9.2";
+  version = "0.9.3";
   src = fetchFromGitHub {
     owner = "Latias94";
     repo = "merman";
     rev = "v${version}";
-    hash = "sha256-whmFtFdfADAEmNRj2bXr6A7o3Lw5887HZJa8oqmXJnw=";
+    hash = "sha256-hkOC1Y+nVE35bY2issYNoAKTFESH59y6wSwuwd9IlKs=";
   };
-  cargoHash = "sha256-B0gU/Frs7bXjxwYLJ7b3TeR3N3Qxl0U8oM3qlkbSwIU=";
+  cargoHash = "sha256-HiitKF6wgeVb8ZVIUz45uiNAlKszrGBYigFjmrsJu5M=";
 }
