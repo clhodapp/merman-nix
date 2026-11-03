@@ -3,12 +3,12 @@
 # Upstream's newest tag, prerelease or not. update.yml moves it.
 { buildMerman, fetchFromGitHub }:
 buildMerman rec {
-  version = "0.9.3";
+  version = "0.10.0-alpha.1";
   src = fetchFromGitHub {
     owner = "Latias94";
     repo = "merman";
     rev = "v${version}";
-    hash = "sha256-hkOC1Y+nVE35bY2issYNoAKTFESH59y6wSwuwd9IlKs=";
+    hash = "sha256-qV5WWUiCGF6hEP9n57fKEbLkD6vLu1dE4flkH7uxg24=";
   };
-  cargoHash = "sha256-HiitKF6wgeVb8ZVIUz45uiNAlKszrGBYigFjmrsJu5M=";
+  cargoHash = "sha256-lxL6+pG+WE3q1gVM6SWJXYOUGsUEjaJYHMX6l/w6GwM=";
 }
