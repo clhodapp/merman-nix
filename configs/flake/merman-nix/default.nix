@@ -34,7 +34,17 @@
       packages.default = config.packages.merman-stable;
     };
 
-  partitionedAttrs.checks = "checks";
+  # The checks of merman-nix, with the pins of tests/dependencies that
+  # only the checks need (configs/flake/checks). The caisson top gathers
+  # the checks of every configuration declared inside it into its
+  # `checks` output. This selector passes the configuration up to
+  # nothing, so a flake that reads the exports of merman-nix evaluates
+  # neither the configuration nor its pins.
+  caisson.flake-parts.configurations.checks = lib.caisson.flake-parts.mkConfiguration {
+    inherit (lib.caisson.pins.flake-compat ../../../tests/dependencies) dependencies;
+  };
+  caisson.flake-parts.exported = _: { };
+
   partitionedAttrs.formatter = "formatter";
 
   partitions.formatter = {
@@ -44,32 +54,6 @@
       {
         imports = [ inputs.treefmt-nix.flakeModule ];
         perSystem.treefmt.programs.nixfmt.enable = true;
-      };
-  };
-
-  partitions.checks = {
-    extraInputs = (lib.caisson.pins.flake-compat ../../../tests/dependencies).dependencies;
-    module =
-      { inputs, self, ... }:
-      {
-        imports = [ inputs.treefmt-nix.flakeModule ];
-        perSystem =
-          { pkgs, system, ... }:
-          let
-            packages = self.packages.${system};
-          in
-          {
-            # Each package carries its smoke test (pkgs/build-merman.nix),
-            # which exercises the built binaries over the interfaces
-            # consumers actually use; `smoke-<package>` is how update.yml
-            # names the one it runs against a bump.
-            checks =
-              pkgs.lib.mapAttrs' (name: package: pkgs.lib.nameValuePair "smoke-${name}" package.tests.smoke)
-                {
-                  inherit (packages) merman-stable merman-preview merman-unstable;
-                };
-            treefmt.programs.nixfmt.enable = true;
-          };
       };
   };
 
