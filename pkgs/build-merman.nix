@@ -10,6 +10,8 @@
   lib,
   rustPlatform,
   runCommand,
+  pkg-config,
+  aws-lc,
 }:
 {
   version,
@@ -30,6 +32,12 @@ let
     args
     // {
       pname = "merman";
+
+      # The cargo setup hook of nixpkgs sets `AWS_LC_SYS_USE_SYSTEM`, so
+      # the `aws-lc-sys` crate links the AWS-LC of nixpkgs, which it finds
+      # through pkg-config.
+      nativeBuildInputs = [ pkg-config ];
+      buildInputs = [ aws-lc ];
 
       # merman-cli: headless mmdc-compatible renderer (SVG/PNG without a
       # browser); merman-lsp: mermaid language server. The merman-lsp
